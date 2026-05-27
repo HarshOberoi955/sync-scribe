@@ -6,10 +6,11 @@ def transcribe_and_sync(audio_path):
     # We use the "base" model here. It's fast and doesn't require a massive GPU.
     # Later, you can change this to "small" or "medium" for even higher accuracy!
     print("⏳ Loading the Whisper AI model (this might take a few seconds)...")
-    model = whisper.load_model("small")
+    model = whisper.load_model("medium")
     
     print(f"🎙️ Listening to '{audio_path}' and transcribing...")
-    result = model.transcribe(audio_path, language="en")
+
+    result = model.transcribe(audio_path)
     
     print("\n✅ Transcription Complete! Here are the synced timestamps:\n")
     print("-" * 50)
@@ -69,27 +70,30 @@ def translate_segments(segments, target_lang='es'):
     return translated_segments
 
 def format_timestamp(seconds):
-    """Converts raw seconds into the strict HH:MM:SS,mmm format for SRT."""
+    """Converts raw seconds into the strict SRT time format (HH:MM:SS,mmm)"""
     hours = int(seconds // 3600)
     minutes = int((seconds % 3600) // 60)
     secs = int(seconds % 60)
-    milliseconds = int((seconds % 1) * 1000)
-    return f"{hours:02}:{minutes:02}:{secs:02},{milliseconds:03}"
+    milliseconds = int((seconds - int(seconds)) * 1000)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d},{milliseconds:03d}"
 
-def save_to_srt(segments, output_filename):
-    """Write the time-synced translated segments to an SRT file."""
-    print(f"\n💾 Saving subtitles to '{output_filename}'...")
-
-    with open(output_filename, 'w', encoding='utf-8') as f:
-        for index, segment in enumerate(segments, start=1):
-            start_time = format_timestamp(segment["start"])
-            end_time = format_timestamp(segment["end"])
-
-            f.write(f"{index}\n")
+def save_to_srt(segments, filepath):
+    """Saves the translated segments to a standard .srt file with UTF-8 encoding."""
+    print(f"💾 Saving subtitles to '{filepath}'...")
+    
+    # The encoding="utf-8" guarantees Hindi and Punjabi characters are saved safely!
+    with open(filepath, "w", encoding="utf-8") as f:
+        for i, segment in enumerate(segments):
+            start_time = format_timestamp(segment['start'])
+            end_time = format_timestamp(segment['end'])
+            text = segment['text'].strip()
+            
+            # Write the strict SRT format
+            f.write(f"{i+1}\n")
             f.write(f"{start_time} --> {end_time}\n")
-            f.write(f"{segment['text']}\n\n")
-
-    print(f"✅ Success! Your subtitle file is ready at '{output_filename}'")
+            f.write(f"{text}\n\n")
+            
+    print(f"✅ Success! Your subtitle file is ready at '{filepath}'")
 
 # --- Test the script ---
 if __name__ == "__main__":

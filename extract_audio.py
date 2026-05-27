@@ -28,6 +28,36 @@ def extract_audio(video_path, audio_output_path):
         if e.stderr:
             print(e.stderr.decode('utf8'))
 
+def burn_subtitles(video_path, srt_path, output_video_path):
+    """
+    Takes the original video and the new SRT file, and hardcodes 
+    the text directly onto the video frames.
+    """
+    print("🎬 Burning subtitles into the video (this might take a moment)...")
+    try:
+        (
+            ffmpeg
+            .input(video_path)
+            # Added vcodec and acodec to guarantee the web browser can play it!
+            .output(
+                output_video_path, 
+                # We added force_style to use a universal font and make it bigger!
+                vf=f"subtitles={srt_path}:force_style='Fontname=FreeSerif,FontSize=24'", 
+                vcodec="libx264", 
+                acodec="aac"
+            )
+            .overwrite_output()
+            .run(quiet=True)
+        )
+        print(f"✅ Subtitled video ready at '{output_video_path}'!")
+        return output_video_path
+        
+    except ffmpeg.Error as e:
+        print("❌ FFmpeg Error while burning subtitles!")
+        if e.stderr:
+            print(e.stderr.decode('utf8'))
+        return None
+    
 if __name__ == "__main__":
     input_video = "sample_video.mp4"
     output_audio = "extracted_audio.wav"

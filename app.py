@@ -1,54 +1,47 @@
 import gradio as gr
 import os
-# Import your amazing functions from the other file!
+from extract_audio import extract_audio, burn_subtitles
 from transcribe_audio import transcribe_and_sync, translate_segments, save_to_srt
 
-def generate_subtitles(audio_filepath, target_lang):
-    """
-    This is the wrapper function. Gradio will pass the uploaded file path 
-    and the selected language to this function when the user clicks 'Submit'.
-    """
-    if audio_filepath is None:
-        return None
-        
-    print(f"📥 Received file: {audio_filepath}")
+def process_video(video_filepath, target_lang):
+    """The Master Pipeline: Video In -> Subtitled Video Out"""
+    if video_filepath is None:
+        return None, None
     
-    # 1. We define what the final file should be named
-    output_filename = "final_subtitles.srt"
-    
-    # 2. Run your AI pipeline!
-    english_segments = transcribe_and_sync(audio_filepath)
-    translated_segments = translate_segments(english_segments, target_lang=target_lang)
-    save_to_srt(translated_segments, output_filename)
-    
-    # 3. Return the file path so the web interface can download it
-    return output_filename
+    print(f"\n📥 Received video: {video_filepath}")
+    temp_audio = "temp_audio.wav"
+    temp_srt = "temp_subtitles.srt"
+    final_video = "final_output.mp4"
 
-# --- The Web Interface Design ---
+    extract_audio(video_filepath, temp_audio)
+    english_segments = transcribe_and_sync(temp_audio)
+    translated_segments = translate_segments(english_segments, target_lang=target_lang)
+    save_to_srt(translated_segments, temp_srt)
+    burn_subtitles(video_filepath, temp_srt, final_video)
+    return final_video, temp_srt
+
 print("🚀 Starting SyncScribe Web UI...")
 
 interface = gr.Interface(
-    fn=generate_subtitles,
-    
-    # Define what the user sees on the left side (Inputs)
+    fn=process_video,
+
     inputs=[
-        gr.Audio(type="filepath", label="Drop your Audio file here"),
+        gr.Video(label="Upload your Video (.mp4)"),
         gr.Dropdown(
-            choices=["es", "fr", "de", "hi", "it", "ja"], 
-            value="es", 
-            label="Translation Language (es=Spanish, fr=French, etc.)"
+            choices=["en", "fr", "de", "hi", "it", "ja", "pa"],
+            value="en",
+            label="Translation Language (es=Spanish, hi=Hindi, pa=Punjabi, etc.)"
         )
     ],
-    
-    # Define what the user sees on the right side (Outputs)
-    outputs=gr.File(label="Download your Subtitles (.srt)"),
-    
-    # Make it look pretty
+
+    outputs=[
+        gr.Video(label="🎬 Watch your Subtitled Video!"),
+        gr.File(label="Download Subtitles (.srt)")
+    ],
+
     title="🎙️ SyncScribe: AI Auto-Subtitles",
-    description="Drop an audio file below, pick a language, and let the AI generate perfect time-synced subtitles.",
-    theme="default"
+    description="Upload a video, pick a language, and the AI will hardcode translated subtitles directly onto your video!",
 )
 
-# Launch the local server
 if __name__ == "__main__":
     interface.launch()

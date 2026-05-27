@@ -1,0 +1,16 @@
+# Ignore virtual environments
+venv/
+env/
+
+# Ignore heavy media files
+*.mp4
+*.wav
+*.ogg
+*.mp3
+data/
+
+# Ignore system and cache files
+__pycache__/
+.gradio/
+*.srt
+

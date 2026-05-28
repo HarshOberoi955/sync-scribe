@@ -41,11 +41,12 @@ def burn_subtitles(video_path, srt_path, output_video_path):
             # Added vcodec and acodec to guarantee the web browser can play it!
             .output(
                 output_video_path, 
-                # We added force_style to use a universal font and make it bigger!
-                vf=f"subtitles={srt_path}:force_style='Fontname=FreeSerif,FontSize=24'", 
+                # We changed FreeSerif to Noto Sans Gurmukhi!
+                vf=f"subtitles={srt_path}:force_style='Fontname=Noto Sans Gurmukhi,FontSize=24'", 
                 vcodec="libx264", 
                 acodec="aac"
             )
+            
             .overwrite_output()
             .run(quiet=True)
         )

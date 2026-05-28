@@ -13,4 +13,5 @@ data/
 __pycache__/
 .gradio/
 *.srt
-
+*.mp4
+*.mp3

@@ -2,42 +2,30 @@ import whisper
 import os
 from deep_translator import GoogleTranslator
 
-def transcribe_and_sync(audio_path):
-    # We use the "base" model here. It's fast and doesn't require a massive GPU.
-    # Later, you can change this to "small" or "medium" for even higher accuracy!
+def transcribe_and_sync(audio_path, source_lang="en", target_lang="en"):
     print("⏳ Loading the Whisper AI model (this might take a few seconds)...")
     model = whisper.load_model("medium")
     
-    print(f"🎙️ Listening to '{audio_path}' and transcribing...")
-
-    result = model.transcribe(audio_path)
-    
-    print("\n✅ Transcription Complete! Here are the synced timestamps:\n")
-    print("-" * 50)
-    
-    # Whisper automatically breaks the audio into "segments"
-    for segment in result["segments"]:
-        start_time = round(segment["start"], 2)
-        end_time = round(segment["end"], 2)
-        text = segment["text"].strip()
-        
-        # Print it out nicely formatted
-        print(f"[{start_time}s -> {end_time}s] {text}")
-        
-    print("-" * 50)
-    
-    # We will return this data so we can use it in Phase 3
-    return result["segments"]
-
-# --- Test the script ---
-if __name__ == "__main__":
-    # Point this to the audio file we generated in Phase 1
-    audio_file = "extracted_audio.wav"
-    
-    if os.path.exists(audio_file):
-        transcribe_and_sync(audio_file)
+    # 🔥 THE UPGRADE: If going from Punjabi/Hindi -> English, let Whisper do it natively!
+    if target_lang == "en" and source_lang != "en":
+        print(f"🎙️ Listening to {source_lang} and translating DIRECTLY to English...")
+        result = model.transcribe(
+            audio_path,
+            language=source_lang,
+            task="translate", # <-- THIS IS THE MAGIC WORD!
+            condition_on_previous_text=False
+        )
     else:
-        print(f"❌ Error: Could not find '{audio_file}'. Did you delete it?")
+        print(f"🎙️ Listening and transcribing in {source_lang}...")
+        hint = "ਇਹ ਪੰਜਾਬੀ ਵਿੱਚ ਇੱਕ ਆਡੀਓ ਹੈ।" if source_lang == "pa" else None
+        result = model.transcribe(
+            audio_path,
+            language=source_lang,
+            initial_prompt=hint,
+            condition_on_previous_text=False
+        )
+    
+    return result["segments"]
 
 def translate_segments(segments, target_lang='es'):
     """

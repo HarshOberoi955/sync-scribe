@@ -3,16 +3,18 @@ import os
 from deep_translator import GoogleTranslator
 
 def transcribe_and_sync(audio_path, source_lang="en", target_lang="en"):
-    print("⏳ Loading the Whisper AI model (this might take a few seconds)...")
-    model = whisper.load_model("medium")
+    print("⏳ Loading the MASSIVE Whisper 'Large' model (this will take a while)...")
     
-    # 🔥 THE UPGRADE: If going from Punjabi/Hindi -> English, let Whisper do it natively!
+    # 🔥 THE UPGRADE: We are officially using the smartest model available!
+    model = whisper.load_model("large")
+    
+    # If going from Punjabi/Hindi -> English, let Whisper do it natively
     if target_lang == "en" and source_lang != "en":
         print(f"🎙️ Listening to {source_lang} and translating DIRECTLY to English...")
         result = model.transcribe(
             audio_path,
             language=source_lang,
-            task="translate", # <-- THIS IS THE MAGIC WORD!
+            task="translate", 
             condition_on_previous_text=False
         )
     else:

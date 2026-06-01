@@ -2,35 +2,39 @@ import gradio as gr
 import os
 from extract_audio import extract_audio, burn_subtitles
 from transcribe_audio import transcribe_and_sync, translate_segments, save_to_srt
+from youtube_downloader import download_youtube_video
 
-def process_video(video_filepath, source_lang, target_lang):
+def process_video(video_filepath, youtube_url, source_lang, target_lang):
     """The Master Pipeline: Video In -> Subtitled Video Out"""
-    if video_filepath is None:
+
+    if youtube_url and youtube_url.strip() != "":
+        video_to_process = download_youtube_video(youtube_url)
+    elif video_filepath:
+        video_to_process = video_filepath
+    else:
+        return None, None
+    if not video_to_process:
         return None, None
     
-    print(f"\n📥 Received video: {video_filepath}")
-    
-    # 1. Define our filenames FIRST
+    print(f"\n📥 Processing video: {video_to_process}")
+
     temp_audio = "temp_audio.wav"
     temp_srt = "temp_subtitles.srt"
     final_video = "final_output.mp4"
 
-    # 3. Transcribe (and optionally let Whisper translate to English natively)
-    # We pass BOTH source and target languages now
-    transcribed_segments = transcribe_and_sync(temp_audio, source_lang=source_lang, target_lang=target_lang)
+    extract_audio(video_to_process, temp_audio)
     
-    # 4. Translate the text (ONLY if we aren't already done!)
+    transcribed_segments = transcribe_and_sync(temp_audio, source_lang=source_lang, target_lang=target_lang)
+
     if target_lang != "en" and source_lang != target_lang:
         print(f"🌍 Running text translator for {target_lang}...")
         final_segments = translate_segments(transcribed_segments, target_lang=target_lang)
     else:
-        # Whisper already translated it to English, or it's the same language
-        final_segments = transcribed_segments 
+        final_segments = transcribed_segments
 
-    
     save_to_srt(final_segments, temp_srt)
 
-    output_video = burn_subtitles(video_filepath, temp_srt, final_video)
+    output_video = burn_subtitles(video_to_process, temp_srt, final_video)
 
     return output_video, temp_srt
 
@@ -39,24 +43,31 @@ interface = gr.Interface(
     inputs=[
         gr.Video(label="Upload your Video (.mp4)"),
 
-        gr.Dropdown(
-            choices=["en", "hi", "pa", "es", "fr", "de"], 
-            value="en", 
-            label="1. Spoken Language (What is the person speaking?)"
+        gr.Textbox(
+            label="OR Paste a YouTube Link here",
+            placeholder="https://www.youtube.com/watch?v=..."
         ),
 
         gr.Dropdown(
-            choices=["en", "hi", "pa", "es", "fr", "de"], 
-            value="hi", 
-            label="2. Subtitle Language (What should the text say?)"
+            choices=["en", "hi", "pa", "es", "fr", "de"],
+            value="en",
+            label="1. Spoken Language"
+        ),
+
+        gr.Dropdown(
+            choices=["en", "hi", "pa", "es", "fr", "de"],
+            value="hi",
+            label="2. Subtitle Language"
         )
     ],
+
     outputs=[
         gr.Video(label="🎬 Watch your Subtitled Video!"),
         gr.File(label="Download Subtitles (.srt)")
     ],
+
     title="🎙️ SyncScribe: AI Auto-Subtitles",
-    description="Upload a video, tell the AI what language is being spoken, and pick your subtitle language!",
+    description="Upload a video OR paste a YouTube link, pick you language, and let the AI do the rest!",
 )
 
 if __name__ == "__main__":

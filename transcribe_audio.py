@@ -2,6 +2,7 @@ import whisper
 import os
 from pyannote.audio import Pipeline
 
+# Secure fallback for pulling local environment values
 HF_TOKEN = os.getenv("HF_TOKEN")
 
 def diarize_audio(audio_path, hf_token):
@@ -17,9 +18,9 @@ def diarize_audio(audio_path, hf_token):
         diarization = pipeline(audio_path)
 
         speaker_segments = []
+        # Target the explicit speaker_diarization dataclass attribute exposed via dir()
         for turn, _, speaker in diarization.speaker_diarization.itertracks(yield_label=True):
-            # 🔥 ADD THIS TEMP LINE TO PRINT WHAT THE AI DETECTS:
-            print(f"DEBUG TIME: {turn.start:.1f}s - {turn.end:.1f}s | AI NAMED: {speaker}")
+            print(f"DEBUG TIME: {turn.start:.1f}s - {turn.end:.1f}s | AI DETECTED: {speaker}")
             
             speaker_segments.append({
                 "start": turn.start,
@@ -34,7 +35,7 @@ def diarize_audio(audio_path, hf_token):
         print(f"⚠️ Diarization skipped or failed: {e}")
         print("💡 Make sure you accepted BOTH terms on Hugging Face and pasted your token correctly!")
         return []
-    
+
 def assign_speakers_to_segments(whisper_segments, speaker_segments):
     """Matches each Whisper sentence to the speaker who was talking at that exact time."""
     if not speaker_segments:
@@ -49,8 +50,7 @@ def assign_speakers_to_segments(whisper_segments, speaker_segments):
 
         for s_seg in speaker_segments:
             overlap_start = max(w_start, s_seg["start"])
-            # ✅ FIXED: Now correctly using s_seg["end"] to isolate the second speaker!
-            overlap_end = min(w_end, s_seg["end"]) 
+            overlap_end = min(w_end, s_seg["end"]) # Corrected overlapping target bounds tracking
             overlap = max(0, overlap_end - overlap_start)
 
             if overlap > max_overlap:
@@ -69,7 +69,8 @@ def assign_speakers_to_segments(whisper_segments, speaker_segments):
         w_seg["speaker"] = best_speaker
     return whisper_segments
 
-def transcribe_and_sync(audio_path, source_lang="en", target_lang="en", run_diarization=False):
+# ✅ 5-Argument positional mapping to cleanly intercept master app.py calls
+def transcribe_and_sync(audio_path, source_lang, target_lang, enable_diarization, hf_token):
     """The main transcription system using Whisper Large."""
     print("⏳ Loading the MASSIVE Whisper 'Large' model...")
     model = whisper.load_model("large")
@@ -84,14 +85,16 @@ def transcribe_and_sync(audio_path, source_lang="en", target_lang="en", run_diar
     
     whisper_segments = result["segments"]
 
-    if run_diarization:
-        speaker_turns = diarize_audio(audio_path, HF_TOKEN)
+    # ✅ FIXED: Changed variable to match 'enable_diarization' input parameter
+    if enable_diarization:
+        # ✅ FIXED: Now routes the token argument explicitly passed down from app.py
+        speaker_turns = diarize_audio(audio_path, hf_token)
         whisper_segments = assign_speakers_to_segments(whisper_segments, speaker_turns)
 
     return whisper_segments
 
 def translate_segments(segments, target_lang):
-    """Your existing translation loop (keeps speaker tags intact if they exist)"""
+    """Placeholder for language matrix translation extensions."""
     return segments
 
 def save_to_srt(segments, out_path):
@@ -109,7 +112,7 @@ def save_to_srt(segments, out_path):
             end_str = format_time(seg["end"])
             text = seg["text"].strip()
             
-            # 🔥 NEW: Format text to show [SPEAKER_00]: Text here if speaker tracking is on
+            # Formats text block visually as [Speaker 00]: Content
             if "speaker" in seg:
                 clean_speaker = seg["speaker"].replace("SPEAKER_", "Speaker ")
                 line = f"[{clean_speaker}]: {text}"
